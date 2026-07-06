@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multiverse Simulation Engine</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --void:#05070d;
+  --panel:#0d1220;
+  --panel-alt:#131a2e;
+  --panel-raised:#1a2238;
+  --border:#232b45;
+  --border-lit:#3a4670;
+  --text:#dce4f5;
+  --dim:#6b7591;
+  --cyan:#4ff0d4;
+  --amber:#ffb454;
+  --magenta:#ff5fa2;
+  --green:#7ee787;
+  --violet:#a78bfa;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{
+  background:var(--void);
+  color:var(--text);
+  font-family:'IBM Plex Mono', monospace;
+  height:100%;
+  overflow:hidden;
+}
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--border-lit); border-radius:4px;}
+
+.app{
+  display:grid;
+  grid-template-columns: 300px 1fr 320px;
+  grid-template-rows: 56px 1fr 130px;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "left center right"
+    "left events right";
+  height:100vh;
+  width:100vw;
+  gap:1px;
+  background:var(--border);
+}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  grid-area: topbar;
+  background:var(--panel);
+  display:flex;
+  align-items:center;
+  padding:0 18px;
+  gap:18px;
+  border-bottom:1px solid var(--border);
+}
+.brand{
+  font-family:'Space Grotesk', sans-serif;
+  font-weight:700;
+  font-size:16px;
+  letter-spacing:0.5px;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  white-space:nowrap;
+}
+.brand .glyph{
+  color:var(--cyan);
+  font-size:18px;
+  animation: spin 8s linear infinite;
+  display:inline-block;
+}
+@keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+
+.universe-select{
+  background:var(--panel-alt);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:12px;
+  padding:8px 10px;
+  border-radius:4px;
+  min-width:180px;
+}
+.btn{
+  background:var(--panel-alt);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:12px;
+  padding:8px 12px;
+  border-radius:4px;
+  cursor:pointer;
+  transition: all .15s ease;
+  white-space:nowrap;
+}
+.btn:hover{ border-color:var(--border-lit); background:var(--panel-raised); }
+.btn.primary{ background: linear-gradient(135deg, #1c3a3a, #0d1220); border-color:var(--cyan); color:var(--cyan); }
+.btn.primary:hover{ box-shadow:0 0 12px rgba(79,240,212,0.25); }
+.btn.danger{ border-color:var(--magenta); color:var(--magenta); }
+.btn.small{ padding:5px 9px; font-size:11px; }
+.btn:disabled{ opacity:0.35; cursor:not-allowed; }
+
+.topbar .spacer{flex:1;}
+.tick-readout{
+  font-size:11px;
+  color:var(--dim);
+  display:flex; flex-direction:column; align-items:flex-end; line-height:1.4;
+}
+.tick-readout b{ color:var(--cyan); font-size:14px; font-weight:600;}
+
+.speed-group{ display:flex; align-items:center; gap:6px; background:var(--panel-alt); border:1px solid var(--border); border-radius:4px; padding:3px; }
+.speed-group button{
+  background:transparent; border:none; color:var(--dim); font-family:'IBM Plex Mono';
+  font-size:11px; padding:5px 8px; cursor:pointer; border-radius:3px;
+}
+.speed-group button.active{ background:var(--panel-raised); color:var(--cyan); }
+
+/* ---------- LEFT PANEL ---------- */
+.left{
+  grid-area:left;
+  background:var(--panel);
+  overflow-y:auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.section-title{
+  font-family:'Space Grotesk', sans-serif;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--dim);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.field{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.field label{
+  font-size:11px;
+  color:var(--text);
+  display:flex;
+  justify-content:space-between;
+}
+.field label .val{ color:var(--cyan); font-weight:600; }
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%;
+  height:4px;
+  background:var(--border);
+  border-radius:2px;
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px; height:14px;
+  border-radius:50%;
+  background:var(--cyan);
+  cursor:pointer;
+  box-shadow:0 0 6px rgba(79,240,212,0.6);
+}
+input[type=text], input[type=number], textarea, select.god-select{
+  background:var(--void);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'IBM Plex Mono';
+  font-size:12px;
+  padding:7px 8px;
+  border-radius:4px;
+  width:100%;
+}
+.hint{ font-size:10px; color:var(--dim); line-height:1.5; }
+
+.civ-list{ display:flex; flex-direction:column; gap:6px; }
+.civ-row{
+  display:flex; align-items:center; gap:8px;
+  background:var(--panel-alt);
+  border:1px solid var(--border);
+  border-radius:5px;
+  padding:8px 10px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.civ-row:hover{ border-color:var(--border-lit); }
+.civ-row.selected{ border-color:var(--cyan); background:var(--panel-raised); }
+.civ-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px currentColor; }
+.civ-row .name{ font-size:12px; flex:1; }
+.civ-row .stat{ font-size:10px; color:var(--dim); }
+.status-pill{
+  font-size:9px; padding:2px 6px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;
+}
+.status-thriving{ background:rgba(126,231,135,0.15); color:var(--green); }
+.status-stable{ background:rgba(79,240,212,0.15); color:var(--cyan); }
+.status-declining{ background:rgba(255,180,84,0.15); color:var(--amber); }
+.status-war{ background:rgba(255,95,162,0.15); color:var(--magenta); }
+.status-extinct{ background:rgba(107,117,145,0.2); color:var(--dim); }
+
+/* ---------- CENTER ---------- */
+.center{
+  grid-area:center;
+  background:var(--void);
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.center-tabs{
+  display:flex;
+  gap:2px;
+  background:var(--panel);
+  padding:8px 8px 0 8px;
+  border-bottom:1px solid var(--border);
+}
+.tab{
+  padding:9px 16px;
+  font-size:11px;
+  letter-spacing:0.5px;
+  color:var(--dim);
+  cursor:pointer;
+  border-radius:6px 6px 0 0;
+  text-transform:uppercase;
+  font-weight:600;
+}
+.tab.active{ background:var(--void); color:var(--cyan); }
+.view{
+  flex:1;
+  position:relative;
+  overflow:hidden;
+}
+.view canvas{ position:absolute; top:0; left:0; width:100%; height:100%; }
+.view-hidden{ display:none; }
+
+.map-overlay{
+  position:absolute; top:12px; left:14px;
+  font-size:10px; color:var(--dim); line-height:1.6;
+  background:rgba(13,18,32,0.6);
+  padding:8px 10px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  pointer-events:none;
+}
+.map-overlay b{ color:var(--text); }
+.legend{ display:flex; gap:12px; margin-top:6px; }
+.legend span{ display:flex; align-items:center; gap:4px; }
+.legend i{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+.chart-title{
+  position:absolute; top:12px; left:14px; font-size:11px; color:var(--dim);
+  text-transform:uppercase; letter-spacing:1px; font-weight:600;
+}
+
+/* ---------- RIGHT PANEL ---------- */
+.right{
+  grid-area:right;
+  background:var(--panel);
+  overflow-y:auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.inspector-empty{
+  color:var(--dim);
+  font-size:12px;
+  text-align:center;
+  padding:40px 10px;
+  line-height:1.6;
+}
+.insp-header{ display:flex; align-items:center; gap:10px; }
+.insp-header .civ-dot{ width:16px; height:16px; }
+.insp-header .name{ font-family:'Space Grotesk'; font-size:15px; font-weight:600; }
+.insp-header .sub{ font-size:10px; color:var(--dim); }
+
+.metric-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.metric{
+  background:var(--panel-alt);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 10px;
+}
+.metric .k{ font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.5px; }
+.metric .v{ font-size:15px; font-weight:600; color:var(--text); margin-top:2px; }
+.bar-track{ height:5px; background:var(--border); border-radius:3px; margin-top:6px; overflow:hidden; }
+.bar-fill{ height:100%; border-radius:3px; transition:width .3s ease; }
+
+.tech-tree{ display:flex; flex-direction:column; gap:5px; }
+.tech-stage{ display:flex; align-items:center; gap:8px; font-size:10px; }
+.tech-stage .label{ width:88px; color:var(--dim); flex-shrink:0; }
+.tech-stage .bar-track{ flex:1; margin-top:0; }
+
+.relations-list{ display:flex; flex-direction:column; gap:5px; font-size:11px; }
+.relation-row{ display:flex; justify-content:space-between; padding:5px 8px; background:var(--panel-alt); border-radius:5px; border:1px solid var(--border); }
+.rel-trade{ color:var(--green); }
+.rel-war{ color:var(--magenta); }
+.rel-alliance{ color:var(--cyan); }
+.rel-neutral{ color:var(--dim); }
+
+/* ---------- EVENT LOG / COSMIC EVENTS ---------- */
+.events{
+  grid-area:events;
+  background:var(--panel);
+  border-top:1px solid var(--border);
+  display:flex;
+  overflow:hidden;
+}
+.event-log{
+  flex:1.4;
+  overflow-y:auto;
+  padding:10px 14px;
+  font-size:11px;
+  display:flex;
+  flex-direction:column-reverse;
+  gap:4px;
+}
+.event-line{ color:var(--dim); line-height:1.5; }
+.event-line b{ color:var(--text); font-weight:500; }
+.event-line.tag-event{ color:var(--amber); }
+.event-line.tag-cosmic{ color:var(--magenta); }
+.event-line.tag-war{ color:var(--magenta); }
+.event-line.tag-trade{ color:var(--green); }
+.event-line.tag-tech{ color:var(--cyan); }
+
+.cosmic-panel{
+  flex:1;
+  border-left:1px solid var(--border);
+  padding:10px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.cosmic-panel .section-title{ margin-bottom:2px; }
+.cosmic-btns{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.cosmic-btns .btn{ font-size:10px; padding:8px 6px; text-align:center; }
+
+/* ---------- GOD MODE ---------- */
+.godmode-trigger{
+  position:fixed; bottom:8px; right:8px;
+  width:14px; height:14px;
+  border-radius:50%;
+  background:transparent;
+  border:1px solid var(--border);
+  cursor:pointer;
+  z-index:50;
+  opacity:0.35;
+  transition:opacity .2s;
+}
+.godmode-trigger:hover{ opacity:1; border-color:var(--violet); }
+
+.godmode-overlay{
+  position:fixed; inset:0;
+  background:rgba(3,4,10,0.82);
+  backdrop-filter: blur(3px);
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.godmode-overlay.hidden{ display:none; }
+.godmode-panel{
+  width:720px;
+  max-width:92vw;
+  max-height:86vh;
+  overflow-y:auto;
+  background:var(--panel);
+  border:1px solid var(--violet);
+  box-shadow:0 0 40px rgba(167,139,250,0.15);
+  border-radius:10px;
+  padding:22px 26px;
+}
+.godmode-panel h2{
+  font-family:'Space Grotesk'; font-size:16px; color:var(--violet);
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:4px;
+}
+.godmode-panel .warn{ font-size:11px; color:var(--dim); margin-bottom:16px; }
+.god-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+.god-field label{ font-size:10px; color:var(--dim); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
+.god-divider{ height:1px; background:var(--border); margin:16px 0; }
+.god-spawn-row{ display:flex; gap:8px; margin-bottom:14px; }
+.god-civ-row{ display:flex; align-items:center; gap:8px; padding:6px 8px; background:var(--panel-alt); border-radius:5px; margin-bottom:5px; font-size:11px; }
+.god-civ-row .name{ flex:1; }
+textarea.god-json{ width:100%; height:140px; font-size:10px; resize:vertical; }
+
+.tooltip{
+  position:absolute; background:var(--panel-raised); border:1px solid var(--border-lit);
+  padding:8px 10px; border-radius:6px; font-size:10px; color:var(--text);
+  pointer-events:none; z-index:60; max-width:220px; line-height:1.5; display:none;
+}
+
+@media (max-width: 980px){
+  .app{ grid-template-columns: 1fr; grid-template-rows: 56px auto auto auto auto; grid-template-areas: "topbar" "left" "center" "right" "events"; overflow-y:auto; height:auto; min-height:100vh;}
+  html,body{ overflow-y:auto; height:auto; }
+  .center{ height:420px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand"><span class="glyph">◈</span> MULTIVERSE ENGINE</div>
+    <select class="universe-select" id="universeSelect"></select>
+    <button class="btn" id="newUniverseBtn">+ New Universe</button>
+    <div class="spacer"></div>
+    <div class="speed-group">
+      <button data-speed="0" class="speed-btn">⏸ Pause</button>
+      <button data-speed="1" class="speed-btn">▶ 1x</button>
+      <button data-speed="2" class="speed-btn">▶▶ 3x</button>
+      <button data-speed="3" class="speed-btn">▶▶▶ 8x</button>
+    </div>
+    <button class="btn primary" id="advanceBtn">Advance Turn ⏭</button>
+    <div class="tick-readout">
+      <b id="tickLabel">T+0</b>
+      <span id="civCountLabel">0 civilizations</span>
+    </div>
+  </div>
+
+  <div class="left" id="leftPanel"></div>
+
+  <div class="center">
+    <div class="center-tabs">
+      <div class="tab active" data-view="map">Universe Map</div>
+      <div class="tab" data-view="population">Population</div>
+      <div class="tab" data-view="civcount">Civilizations</div>
+      <div class="tab" data-view="resources">Resource Distribution</div>
+      <div class="tab" data-view="tech">Tech Progression</div>
+    </div>
+    <div class="view" id="view-map">
+      <canvas id="mapCanvas"></canvas>
+      <div class="map-overlay" id="mapOverlay"></div>
+    </div>
+    <div class="view view-hidden" id="view-population"><canvas id="popCanvas"></canvas><div class="chart-title">Total Population Across Time</div></div>
+    <div class="view view-hidden" id="view-civcount"><canvas id="civCanvas"></canvas><div class="chart-title">Active Civilization Count</div></div>
+    <div class="view view-hidden" id="view-resources"><canvas id="resCanvas"></canvas><div class="chart-title">Resource Distribution By Civilization</div></div>
+    <div class="view view-hidden" id="view-tech"><canvas id="techCanvas"></canvas><div class="chart-title">Average Technology Level Over Time</div></div>
+  </div>
+
+  <div class="right" id="rightPanel"></div>
+
+  <div class="events">
+    <div class="event-log" id="eventLog"></div>
+    <div class="cosmic-panel">
+      <div class="section-title">Trigger Cosmic Event</div>
+      <div class="cosmic-btns">
+        <button class="btn danger small" data-event="supernova">☄ Supernova</button>
+        <button class="btn danger small" data-event="extinction">💀 Extinction</button>
+        <button class="btn small" data-event="singularity" style="border-color:var(--violet);color:var(--violet);">◈ AI Singularity</button>
+        <button class="btn small" data-event="goldenage" style="border-color:var(--green);color:var(--green);">✦ Golden Age</button>
+        <button class="btn small" data-event="firstcontact" style="border-color:var(--cyan);color:var(--cyan);" >⟡ First Contact</button>
+        <button class="btn small" data-event="meteor" style="border-color:var(--amber);color:var(--amber);">✹ Meteor Storm</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="godmode-trigger" id="godTrigger" title=""></div>
+
+<div class="godmode-overlay hidden" id="godOverlay">
+  <div class="godmode-panel">
+    <h2>Developer Console <button class="btn small" id="godClose">Close ✕</button></h2>
+    <div class="warn">Direct access to universe internals. Changes apply immediately and are not reversible.</div>
+
+    <div class="section-title" style="margin-bottom:10px;">Physics Constant Override</div>
+    <div class="god-grid" id="godPhysicsGrid"></div>
+
+    <div class="god-divider"></div>
+
+    <div class="section-title" style="margin-bottom:10px;">Spawn Civilization</div>
+    <div class="god-spawn-row">
+      <input type="text" id="godSpawnName" placeholder="Civilization name (optional)">
+      <button class="btn primary small" id="godSpawnBtn">Spawn</button>
+    </div>
+
+    <div class="section-title" style="margin-bottom:10px;">Manage Civilizations</div>
+    <div id="godCivList"></div>
+
+    <div class="god-divider"></div>
+
+    <div class="section-title" style="margin-bottom:10px;">Raw Universe State (JSON)</div>
+    <textarea class="god-json" id="godJson" spellcheck="false"></textarea>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="btn primary small" id="godApplyJson">Apply JSON</button>
+      <button class="btn small" id="godRefreshJson">Refresh From State</button>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+/* =========================================================================
+   MULTIVERSE SIMULATION ENGINE
+   ========================================================================= */
+
+const rand = (min, max) => Math.random() * (max - min) + min;
+const randi = (min, max) => Math.floor(rand(min, max + 1));
+const choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = (n) => {
+  if (n >= 1e12) return (n/1e12).toFixed(2)+"T";
+  if (n >= 1e9) return (n/1e9).toFixed(2)+"B";
+  if (n >= 1e6) return (n/1e6).toFixed(2)+"M";
+  if (n >= 1e3) return (n/1e3).toFixed(1)+"K";
+  return Math.round(n).toString();
+};
+const TECH_STAGES = ["Primitive","Agricultural","Industrial","Information","Space-Faring","Post-Scarcity","Singularity"];
+
+const NAME_A = ["Xel","Kor","Vash","Thal","Zar","Or","Nyx","Vel","Kry","Aur","Bel","Dra","Fen","Gor","Hyl","Il","Jor","Kae","Lum","Mor","Nael","Pyr","Quor","Ryn","Syl","Tev","Ux","Vor","Wren","Yth","Zen"];
+const NAME_B = ["ara","ion","eth","ux","ari","is","on","ael","yr","oth","und","ex","ira","om","yn","asca","idon","erra","ovus","enar"];
+const UNIV_ADJ = ["Verdant","Silent","Fractured","Radiant","Hollow","Ember","Glacial","Twin","Forgotten","Prime","Echo","Drift","Umbral","Wild","Quiet","Crimson"];
+const UNIV_NOUN = ["Expanse","Continuum","Reach","Vein","Bloom","Cradle","Weave","Drift","Nexus","Sprawl","Horizon","Fold"];
+
+function generateBeingName(){ return choice(NAME_A) + choice(NAME_B); }
+function generateUniverseName(){ return choice(UNIV_ADJ) + " " + choice(UNIV_NOUN) + "-" + randi(1,999); }
+
+let uid = 1;
+function nextId(prefix){ return prefix + (uid++); }
+
+/* ---------------- Civilization factory ---------------- */
+function createCivilization(tick, overrides={}){
+  const hue = randi(0,359);
+  const civ = {
+    id: nextId("civ_"),
+    name: generateBeingName() + " " + choice(["Collective","Dominion","Concord","Ascendancy","Kinship","Assembly","Hegemony","Union"]),
+    hue,
+    population: randi(50000, 500000),
+    stability: randi(45, 75),
+    techLevel: rand(0, 1.2),
+    resources: randi(200, 800),
+    aggression: randi(10, 70),
+    founded: tick,
+    status: "stable",
+    angle: rand(0, Math.PI*2),
+    orbitRadius: rand(0.28, 0.92),
+    orbitSpeed: rand(0.0006, 0.002) * (Math.random()<0.5?1:-1),
+    relations: {},
+    ...overrides
+  };
+  return civ;
+}
+
+/* ---------------- Universe factory ---------------- */
+function createUniverse(params){
+  const id = nextId("uni_");
+  const civs = [];
+  for(let i=0;i<params.startingCivs;i++){
+    civs.push(createCivilization(0));
+  }
+  return {
+    id,
+    name: generateUniverseName(),
+    seedHue: randi(0,359),
+    tick: 0,
+    physics: {
+      gravity: params.gravity,
+      entropy: params.entropy,
+      expansion: params.expansion,
+      exoticMatter: params.exoticMatter,
+      uncertainty: params.uncertainty
+    },
+    startingCivs: params.startingCivs,
+    civs,
+    log: [],
+    history: { ticks:[0], population:[civs.reduce((s,c)=>s+c.population,0)], civCount:[civs.length], avgTech:[0] },
+    lastResourceSnapshot: []
+  };
+}
+
+function pushLog(u, msg, tag="event"){
+  u.log.push({ tick:u.tick, msg, tag });
+  if(u.log.length > 300) u.log.shift();
+}
+
+/* ---------------- Core simulation tick ---------------- */
+function simulateTick(u){
+  u.tick += 1;
+  const p = u.physics;
+  const uncertaintyMul = 1 + p.uncertainty/100;
+  const active = u.civs.filter(c => c.status !== "extinct");
+
+  // Per-civilization evolution
+  active.forEach(c => {
+    // ECONOMY -> influenced by expansion + stability
+    const resourceGrowth = (c.population/100000) * (0.6 + p.expansion/120) * (c.stability/100) * rand(0.7,1.3);
+    c.resources = Math.max(0, c.resources + resourceGrowth - c.resources*0.01);
+
+    // ECONOMY -> TECH
+    const techGain = (c.resources/4000) * (0.4 + p.exoticMatter/150) * rand(0.5, 1.5*uncertaintyMul);
+    c.techLevel = clamp(c.techLevel + techGain, 0, 6.99);
+
+    // TECH + ECONOMY -> POPULATION / SURVIVAL
+    const baseGrowth = 0.015 + c.techLevel*0.006 + (c.stability-50)/2500 - (c.aggression>75?0.01:0);
+    let growth = baseGrowth * rand(1-0.4*uncertaintyMul*0.3, 1+0.4*uncertaintyMul*0.3);
+    c.population = Math.max(0, c.population * (1+growth));
+
+    // GRAVITY -> STABILITY drift (extreme gravity destabilizes, near-1 stabilizes)
+    const gravDelta = -(Math.abs(p.gravity-1) * 2.2);
+    c.stability = clamp(c.stability + gravDelta*0.15 + rand(-2,2)*uncertaintyMul*0.5 + (c.techLevel>3?0.4:0), 0, 100);
+
+    // ENTROPY -> random local event
+    const eventChance = 0.04 + p.entropy/280;
+    if(Math.random() < eventChance){
+      rollRandomEvent(u, c);
+    }
+
+    updateStatus(c);
+  });
+
+  // Interaction pass (trade / war / alliance) between active pairs
+  const list = u.civs.filter(c=>c.status!=="extinct");
+  for(let i=0;i<list.length;i++){
+    for(let j=i+1;j<list.length;j++){
+      interact(u, list[i], list[j]);
+    }
+  }
+
+  // Possible first-contact spawn from expansion pressure
+  const expansionSpawnChance = (p.expansion/100) * 0.02;
+  if(u.civs.filter(c=>c.status!=="extinct").length < 10 && Math.random() < expansionSpawnChance){
+    const nc = createCivilization(u.tick);
+    u.civs.push(nc);
+    pushLog(u, `A new signal emerges from the void: ${nc.name} makes first contact with the wider cosmos.`, "event");
+  }
+
+  // History tracking
+  const totalPop = u.civs.reduce((s,c)=> s + (c.status!=="extinct"? c.population:0), 0);
+  const aliveCivs = u.civs.filter(c=>c.status!=="extinct");
+  const avgTech = aliveCivs.length? aliveCivs.reduce((s,c)=>s+c.techLevel,0)/aliveCivs.length : 0;
+  u.history.ticks.push(u.tick);
+  u.history.population.push(totalPop);
+  u.history.civCount.push(aliveCivs.length);
+  u.history.avgTech.push(avgTech);
+  if(u.history.ticks.length > 200){
+    ["ticks","population","civCount","avgTech"].forEach(k=>u.history[k].shift());
+  }
+}
+
+function updateStatus(c){
+  if(c.population <= 1){ c.status = "extinct"; c.population = 0; return; }
+  const atWar = Object.values(c.relations).includes("war");
+  if(atWar){ c.status = "war"; return; }
+  if(c.stability >= 65) c.status = "thriving";
+  else if(c.stability >= 38) c.status = "stable";
+  else c.status = "declining";
+}
+
+const RANDOM_EVENTS = [
+  { key:"plague", weight:3, tag:"event", run:(u,c)=>{
+      const loss = rand(0.08,0.25);
+      c.population *= (1-loss);
+      c.stability -= rand(4,10);
+      pushLog(u, `${c.name} suffers a plague, losing ${(loss*100).toFixed(0)}% of its population.`, "event");
+  }},
+  { key:"goldenage", weight:2, tag:"event", run:(u,c)=>{
+      c.stability += rand(6,14);
+      c.resources *= 1.2;
+      pushLog(u, `${c.name} enters a local golden age of prosperity.`, "tech");
+  }},
+  { key:"unrest", weight:3, tag:"event", run:(u,c)=>{
+      c.stability -= rand(8,18);
+      pushLog(u, `Civil unrest destabilizes ${c.name}.`, "event");
+  }},
+  { key:"breakthrough", weight:2, tag:"tech", run:(u,c)=>{
+      c.techLevel = clamp(c.techLevel + rand(0.15,0.4), 0, 6.99);
+      pushLog(u, `${c.name} achieves a technological breakthrough.`, "tech");
+  }},
+  { key:"resourcefind", weight:2, tag:"event", run:(u,c)=>{
+      c.resources += rand(150,400);
+      pushLog(u, `${c.name} discovers a rich resource deposit.`, "event");
+  }},
+];
+
+function rollRandomEvent(u, c){
+  const totalWeight = RANDOM_EVENTS.reduce((s,e)=>s+e.weight,0);
+  let r = Math.random()*totalWeight;
+  for(const ev of RANDOM_EVENTS){
+    if(r < ev.weight){ ev.run(u,c); return; }
+    r -= ev.weight;
+  }
+}
+
+function relKey(a,b){ return a.id < b.id ? a.id+"|"+b.id : b.id+"|"+a.id; }
+
+function interact(u, a, b){
+  const key = b.id;
+  if(!a.relations[key]) a.relations[key] = "neutral";
+  if(!b.relations[a.id]) b.relations[a.id] = "neutral";
+  const rel = a.relations[key];
+
+  const roll = Math.random();
+
+  if(rel === "war"){
+    // ongoing war: damage both, chance stronger wins
+    const aggSum = a.aggression + b.aggression;
+    const aPower = a.techLevel*10 + a.population/50000 + a.aggression/5;
+    const bPower = b.techLevel*10 + b.population/50000 + b.aggression/5;
+    const totalPower = aPower+bPower || 1;
+    a.population *= (1 - (bPower/totalPower)*0.02);
+    b.population *= (1 - (aPower/totalPower)*0.02);
+    a.stability -= 0.6; b.stability -= 0.6;
+    if(Math.random() < 0.08){
+      a.relations[key] = "neutral"; b.relations[a.id] = "neutral";
+      pushLog(u, `${a.name} and ${b.name} sign an armistice, ending open war.`, "war");
+    }
+    return;
+  }
+
+  if(rel === "alliance"){
+    a.resources += b.resources*0.004; b.resources += a.resources*0.004;
+    a.stability += 0.15; b.stability += 0.15;
+    return;
+  }
+
+  if(rel === "trade"){
+    const flow = Math.min(a.resources, b.resources) * 0.03;
+    a.resources += flow*0.5; b.resources += flow*0.5;
+    if(Math.random() < 0.01){
+      a.relations[key]="alliance"; b.relations[a.id]="alliance";
+      pushLog(u, `${a.name} and ${b.name} forge a formal alliance.`, "trade");
+    }
+    return;
+  }
+
+  // neutral -> chance of new relation forming
+  const hostilityPressure = (a.aggression + b.aggression)/200;
+  const cooperationPressure = ((a.stability+b.stability)/200) * (1 - hostilityPressure);
+
+  if(roll < hostilityPressure*0.02){
+    a.relations[key]="war"; b.relations[a.id]="war";
+    pushLog(u, `War erupts between ${a.name} and ${b.name}.`, "war");
+  } else if(roll < hostilityPressure*0.02 + cooperationPressure*0.03){
+    a.relations[key]="trade"; b.relations[a.id]="trade";
+    pushLog(u, `${a.name} establishes trade routes with ${b.name}.`, "trade");
+  }
+}
+
+/* ---------------- Cosmic events (manual, dramatic) ---------------- */
+function triggerCosmicEvent(u, type){
+  const alive = u.civs.filter(c=>c.status!=="extinct");
+  if(alive.length===0 && type!=="firstcontact"){
+    pushLog(u, `The event has no effect: this universe is empty.`, "cosmic");
+    return;
+  }
+  switch(type){
+    case "supernova": {
+      const victims = alive.length<=2 ? alive : [choice(alive), choice(alive)];
+      const seen = new Set();
+      victims.forEach(c=>{
+        if(seen.has(c.id)) return; seen.add(c.id);
+        c.population *= rand(0.2, 0.45);
+        c.resources *= 0.4;
+        c.stability -= 25;
+        pushLog(u, `A supernova devastates the ${c.name}, annihilating stellar infrastructure.`, "cosmic");
+      });
+      break;
+    }
+    case "extinction": {
+      alive.forEach(c=>{
+        c.population *= rand(0.25, 0.55);
+        c.stability -= 30;
+      });
+      pushLog(u, `A mass extinction event sweeps across the universe. All civilizations suffer catastrophic losses.`, "cosmic");
+      break;
+    }
+    case "singularity": {
+      const target = alive.reduce((best,c)=> c.techLevel>best.techLevel?c:best, alive[0]);
+      target.techLevel = 6.99;
+      target.resources *= 2;
+      target.population *= 1.3;
+      if(Math.random() < 0.35){
+        target.aggression = 100;
+        alive.forEach(c=>{ if(c.id!==target.id){ target.relations[c.id]="war"; c.relations[target.id]="war"; }});
+        pushLog(u, `${target.name} achieves AI Singularity — and turns hostile, declaring war on every known civilization.`, "cosmic");
+      } else {
+        pushLog(u, `${target.name} achieves AI Singularity, ascending to post-scarcity intelligence.`, "cosmic");
+      }
+      break;
+    }
+    case "goldenage": {
+      alive.forEach(c=>{
+        c.stability = clamp(c.stability+20,0,100);
+        c.resources *= 1.3;
+        c.techLevel = clamp(c.techLevel+0.3,0,6.99);
+      });
+      pushLog(u, `A cosmic alignment ushers in a golden age across the universe.`, "cosmic");
+      break;
+    }
+    case "firstcontact": {
+      const n = randi(1,2);
+      for(let i=0;i<n;i++){
+        const nc = createCivilization(u.tick);
+        u.civs.push(nc);
+        pushLog(u, `First Contact: ${nc.name} emerges and joins the multiverse stage.`, "cosmic");
+      }
+      break;
+    }
+    case "meteor": {
+      alive.forEach(c=>{
+        if(Math.random()<0.7){
+          c.resources *= rand(0.5,0.8);
+        }
+      });
+      pushLog(u, `A meteor storm scatters across inhabited systems, straining resource stockpiles.`, "cosmic");
+      break;
+    }
+  }
+  u.civs.forEach(updateStatus);
+}
+
+/* =========================================================================
+   APPLICATION STATE + UI
+   ========================================================================= */
+
+const state = {
+  universes: {},
+  currentId: null,
+  selectedCivId: null,
+  running: false,
+  speed: 0,
+  intervalHandle: null,
+  activeView: "map"
+};
+
+function defaultParams(){
+  return { gravity:1.0, entropy:35, expansion:40, exoticMatter:30, uncertainty:25, startingCivs:3 };
+}
+
+function makeNewUniverse(params){
+  const u = createUniverse(params);
+  pushLog(u, `Universe "${u.name}" coalesces from the quantum foam. ${u.civs.length} founding civilization(s) detected.`, "cosmic");
+  state.universes[u.id] = u;
+  state.currentId = u.id;
+  state.selectedCivId = null;
+  refreshUniverseSelect();
+  renderAll();
+}
+
+function currentUniverse(){ return state.universes[state.currentId]; }
+
+/* ---------------- Rendering: top-level ---------------- */
+function refreshUniverseSelect(){
+  const sel = document.getElementById("universeSelect");
+  sel.innerHTML = "";
+  Object.values(state.universes).forEach(u=>{
+    const opt = document.createElement("option");
+    opt.value = u.id;
+    opt.textContent = `${u.name}  ·  T+${u.tick}`;
+    if(u.id === state.currentId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderAll(){
+  const u = currentUniverse();
+  renderLeftPanel(u);
+  renderRightPanel(u);
+  renderEventLog(u);
+  renderTopbar(u);
+  drawActiveView(u);
+  refreshUniverseSelect();
+}
+
+function renderTopbar(u){
+  document.getElementById("tickLabel").textContent = u ? `T+${u.tick}` : "T+0";
+  const count = u ? u.civs.filter(c=>c.status!=="extinct").length : 0;
+  document.getElementById("civCountLabel").textContent = `${count} civilization${count===1?"":"s"}`;
+  document.getElementById("advanceBtn").disabled = !u;
+}
+
+/* ---------------- Left Panel: creation + civ list ---------------- */
+function renderLeftPanel(u){
+  const el = document.getElementById("leftPanel");
+  if(!u){
+    el.innerHTML = `
+      <div class="section-title">Create A Universe</div>
+      <div class="hint">No universe exists yet. Configure parameters below and bring one into being.</div>
+      <div id="creationForm"></div>
+    `;
+    renderCreationForm(document.getElementById("creationForm"), defaultParams(), true);
+    return;
+  }
+  el.innerHTML = `
+    <div class="section-title">Physics Parameters <span style="color:var(--dim); font-weight:400; text-transform:none; letter-spacing:0;">live</span></div>
+    <div id="physicsForm"></div>
+    <div class="section-title" style="margin-top:6px;">Civilizations (${u.civs.filter(c=>c.status!=="extinct").length} active)</div>
+    <div class="civ-list" id="civList"></div>
+  `;
+  renderPhysicsForm(document.getElementById("physicsForm"), u);
+  renderCivList(document.getElementById("civList"), u);
+}
+
+function sliderRow(container, key, label, min, max, step, value, onInput, suffix=""){
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  wrap.innerHTML = `
+    <label>${label} <span class="val">${Number(value).toFixed(step<1?2:0)}${suffix}</span></label>
+    <input type="range" min="${min}" max="${max}" step="${step}" value="${value}">
+  `;
+  const input = wrap.querySelector("input");
+  const valSpan = wrap.querySelector(".val");
+  input.addEventListener("input", (e)=>{
+    const v = parseFloat(e.target.value);
+    valSpan.textContent = v.toFixed(step<1?2:0)+suffix;
+    onInput(v);
+  });
+  container.appendChild(wrap);
+}
+
+function renderCreationForm(container, params, isFirst){
+  container.innerHTML = "";
+  const local = {...params};
+  sliderRow(container, "gravity", "Gravitational Constant", 0.1, 3.0, 0.05, local.gravity, v=>local.gravity=v);
+  sliderRow(container, "entropy", "Entropy Rate", 0, 100, 1, local.entropy, v=>local.entropy=v);
+  sliderRow(container, "expansion", "Expansion Rate", 0, 100, 1, local.expansion, v=>local.expansion=v);
+  sliderRow(container, "exoticMatter", "Exotic Matter Density", 0, 100, 1, local.exoticMatter, v=>local.exoticMatter=v);
+  sliderRow(container, "uncertainty", "Quantum Uncertainty", 0, 100, 1, local.uncertainty, v=>local.uncertainty=v);
+  sliderRow(container, "startingCivs", "Founding Civilizations", 1, 6, 1, local.startingCivs, v=>local.startingCivs=v);
+  const btn = document.createElement("button");
+  btn.className = "btn primary";
+  btn.style.width = "100%";
+  btn.style.marginTop = "6px";
+  btn.textContent = isFirst ? "Bring Universe Into Being" : "Spawn New Universe";
+  btn.addEventListener("click", ()=> makeNewUniverse(local));
+  container.appendChild(btn);
+}
+
+function renderPhysicsForm(container, u){
+  container.innerHTML = "";
+  const p = u.physics;
+  sliderRow(container, "gravity", "Gravitational Constant", 0.1, 3.0, 0.05, p.gravity, v=>p.gravity=v);
+  sliderRow(container, "entropy", "Entropy Rate", 0, 100, 1, p.entropy, v=>p.entropy=v);
+  sliderRow(container, "expansion", "Expansion Rate", 0, 100, 1, p.expansion, v=>p.expansion=v);
+  sliderRow(container, "exoticMatter", "Exotic Matter Density", 0, 100, 1, p.exoticMatter, v=>p.exoticMatter=v);
+  sliderRow(container, "uncertainty", "Quantum Uncertainty", 0, 100, 1, p.uncertainty, v=>p.uncertainty=v);
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = "Adjustments apply on the next turn. Gravity near 1.0 favors stability; higher entropy accelerates random events.";
+  container.appendChild(hint);
+}
+
+function renderCivList(container, u){
+  container.innerHTML = "";
+  if(u.civs.length===0){
+    container.innerHTML = `<div class="hint">No civilizations have emerged in this universe yet.</div>`;
+    return;
+  }
+  u.civs.slice().sort((a,b)=> (b.status!=="extinct") - (a.status!=="extinct")).forEach(c=>{
+    const row = document.createElement("div");
+    row.className = "civ-row" + (c.id===state.selectedCivId ? " selected":"");
+    row.innerHTML = `
+      <span class="civ-dot" style="background:hsl(${c.hue},70%,55%); color:hsl(${c.hue},70%,55%); ${c.status==='extinct'?'opacity:0.25;box-shadow:none;':''}"></span>
+      <span class="name" style="${c.status==='extinct'?'text-decoration:line-through;color:var(--dim);':''}">${c.name}</span>
+      <span class="status-pill status-${c.status}">${c.status}</span>
+    `;
+    row.addEventListener("click", ()=>{ state.selectedCivId = c.id; renderAll(); });
+    container.appendChild(row);
+  });
+}
+
+/* ---------------- Right Panel: Inspector ---------------- */
+function renderRightPanel(u){
+  const el = document.getElementById("rightPanel");
+  if(!u || !state.selectedCivId){
+    el.innerHTML = `<div class="inspector-empty">Select a civilization from the list on the left<br>to inspect its population, stability,<br>technology, and diplomatic relations.</div>`;
+    return;
+  }
+  const c = u.civs.find(x=>x.id===state.selectedCivId);
+  if(!c){ el.innerHTML = `<div class="inspector-empty">Civilization not found.</div>`; return; }
+
+  const stageIdx = Math.floor(c.techLevel);
+  const stageProgress = (c.techLevel - stageIdx) * 100;
+
+  el.innerHTML = `
+    <div class="insp-header">
+      <span class="civ-dot" style="background:hsl(${c.hue},70%,55%); color:hsl(${c.hue},70%,55%);"></span>
+      <div>
+        <div class="name">${c.name}</div>
+        <div class="sub">Founded T+${c.founded} · <span class="status-pill status-${c.status}">${c.status}</span></div>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric"><div class="k">Population</div><div class="v">${fmt(c.population)}</div></div>
+      <div class="metric"><div class="k">Resources</div><div class="v">${fmt(c.resources)}</div></div>
+      <div class="metric">
+        <div class="k">Stability</div><div class="v">${c.stability.toFixed(0)}%</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${clamp(c.stability,0,100)}%; background:var(--green);"></div></div>
+      </div>
+      <div class="metric">
+        <div class="k">Aggression</div><div class="v">${c.aggression.toFixed(0)}%</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${clamp(c.aggression,0,100)}%; background:var(--magenta);"></div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Technology Progression</div>
+    <div class="tech-tree" id="techTreeInsp"></div>
+
+    <div class="section-title">Diplomatic Relations</div>
+    <div class="relations-list" id="relList"></div>
+  `;
+
+  const techEl = document.getElementById("techTreeInsp");
+  TECH_STAGES.forEach((stage, idx)=>{
+    let pct = 0;
+    if(idx < stageIdx) pct = 100;
+    else if(idx === stageIdx) pct = stageProgress;
+    const row = document.createElement("div");
+    row.className = "tech-stage";
+    row.innerHTML = `<span class="label">${stage}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:var(--cyan);"></div></div>`;
+    techEl.appendChild(row);
+  });
+
+  const relEl = document.getElementById("relList");
+  const relEntries = Object.entries(c.relations).filter(([id])=> u.civs.find(x=>x.id===id && x.status!=="extinct"));
+  if(relEntries.length===0){
+    relEl.innerHTML = `<div class="hint">No diplomatic contact established yet.</div>`;
+  } else {
+    relEntries.forEach(([id,type])=>{
+      const other = u.civs.find(x=>x.id===id);
+      if(!other) return;
+      const row = document.createElement("div");
+      row.className = "relation-row";
+      row.innerHTML = `<span>${other.name}</span><span class="rel-${type}">${type}</span>`;
+      relEl.appendChild(row);
+    });
+  }
+}
+
+/* ---------------- Event log ---------------- */
+function renderEventLog(u){
+  const el = document.getElementById("eventLog");
+  el.innerHTML = "";
+  if(!u || u.log.length===0){
+    el.innerHTML = `<div class="event-line hint">No events recorded yet.</div>`;
+    return;
+  }
+  u.log.slice().reverse().slice(0,80).forEach(entry=>{
+    const div = document.createElement("div");
+    div.className = "event-line tag-"+entry.tag;
+    div.innerHTML = `<b>T+${entry.tick}</b> — ${entry.msg}`;
+    el.appendChild(div);
+  });
+}
+
+/* =========================================================================
+   CANVAS VISUALIZATIONS
+   ========================================================================= */
+
+function fitCanvas(canvas){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width+"px";
+  canvas.style.height = rect.height+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return { ctx, w: rect.width, h: rect.height };
+}
+
+let starField = null;
+function ensureStarfield(w,h){
+  if(starField && starField.w===w && starField.h===h) return starField;
+  const stars = [];
+  for(let i=0;i<140;i++){
+    stars.push({ x: Math.random()*w, y: Math.random()*h, r: Math.random()*1.3+0.2, tw: Math.random()*Math.PI*2 });
+  }
+  starField = { w,h, stars };
+  return starField;
+}
+
+function drawMap(u){
+  const canvas = document.getElementById("mapCanvas");
+  const { ctx, w, h } = fitCanvas(canvas);
+  ctx.clearRect(0,0,w,h);
+
+  // background starfield
+  const sf = ensureStarfield(w,h);
+  const t = Date.now()/1000;
+  sf.stars.forEach(s=>{
+    const alpha = 0.3 + 0.5*Math.abs(Math.sin(t*0.5 + s.tw));
+    ctx.fillStyle = `rgba(220,228,245,${alpha.toFixed(2)})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+  });
+
+  const overlay = document.getElementById("mapOverlay");
+  if(!u){
+    overlay.innerHTML = `<b>No universe selected</b><br>Create one from the left panel.`;
+    return;
+  }
+  overlay.innerHTML = `<b>${u.name}</b><br>Tick T+${u.tick}<br>
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>Trade</span>
+      <span><i style="background:var(--magenta)"></i>War</span>
+      <span><i style="background:var(--cyan)"></i>Alliance</span>
+    </div>`;
+
+  const cx = w/2, cy = h/2;
+  const maxR = Math.min(w,h)*0.42;
+
+  // central star
+  const pulse = 1 + 0.06*Math.sin(t*1.4);
+  const coreR = 14*pulse;
+  const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,coreR*4);
+  grad.addColorStop(0, `hsla(${u.seedHue},90%,75%,0.9)`);
+  grad.addColorStop(1, `hsla(${u.seedHue},90%,60%,0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx,cy,coreR*4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = `hsl(${u.seedHue},85%,80%)`;
+  ctx.beginPath(); ctx.arc(cx,cy,coreR,0,Math.PI*2); ctx.fill();
+
+  // orbit rings
+  const ringCount = 4;
+  ctx.strokeStyle = "rgba(107,117,145,0.18)";
+  for(let i=1;i<=ringCount;i++){
+    ctx.beginPath(); ctx.arc(cx,cy, maxR*(i/ringCount), 0, Math.PI*2); ctx.stroke();
+  }
+
+  const alive = u.civs.filter(c=>c.status!=="extinct");
+  const positions = {};
+  alive.forEach(c=>{
+    c.angle += c.orbitSpeed * (1 + u.physics.expansion/200);
+    const r = maxR * c.orbitRadius;
+    const x = cx + Math.cos(c.angle)*r;
+    const y = cy + Math.sin(c.angle)*r*0.72;
+    positions[c.id] = {x,y};
+  });
+
+  // relation lines
+  alive.forEach(c=>{
+    Object.entries(c.relations).forEach(([otherId,type])=>{
+      if(type==="neutral") return;
+      if(otherId < c.id) return; // draw once
+      const other = alive.find(o=>o.id===otherId);
+      if(!other) return;
+      const pa = positions[c.id], pb = positions[otherId];
+      if(!pa||!pb) return;
+      let color = "rgba(107,117,145,0.3)";
+      if(type==="trade") color = "rgba(126,231,135,0.55)";
+      if(type==="war") color = "rgba(255,95,162,0.7)";
+      if(type==="alliance") color = "rgba(79,240,212,0.6)";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = type==="war" ? 1.6 : 1.1;
+      if(type==="war"){
+        ctx.setLineDash([4, 3 + 2*Math.sin(t*6)]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  });
+
+  // civilization nodes
+  alive.forEach(c=>{
+    const pos = positions[c.id];
+    const size = 4 + Math.log10(c.population+10)*1.6;
+    const glow = c.id===state.selectedCivId ? 18 : 8;
+    const grad2 = ctx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,size+glow);
+    grad2.addColorStop(0, `hsla(${c.hue},75%,60%,0.9)`);
+    grad2.addColorStop(1, `hsla(${c.hue},75%,60%,0)`);
+    ctx.fillStyle = grad2;
+    ctx.beginPath(); ctx.arc(pos.x,pos.y,size+glow,0,Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = `hsl(${c.hue},75%,62%)`;
+    ctx.beginPath(); ctx.arc(pos.x,pos.y,size,0,Math.PI*2); ctx.fill();
+
+    if(c.id === state.selectedCivId){
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(pos.x,pos.y,size+4,0,Math.PI*2); ctx.stroke();
+    }
+
+    ctx.fillStyle = "rgba(220,228,245,0.85)";
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(c.name.split(" ")[0], pos.x, pos.y - size - 8);
+  });
+
+  canvas.onclick = (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let closest = null, closestD = 22;
+    alive.forEach(c=>{
+      const pos = positions[c.id];
+      const d = Math.hypot(mx-pos.x, my-pos.y);
+      if(d < closestD){ closestD = d; closest = c; }
+    });
+    if(closest){ state.selectedCivId = closest.id; renderAll(); }
+  };
+}
+
+function drawLineChart(canvasId, labels, series, colorVar, yLabel){
+  const canvas = document.getElementById(canvasId);
+  const { ctx, w, h } = fitCanvas(canvas);
+  ctx.clearRect(0,0,w,h);
+  const padL = 54, padR = 20, padT = 30, padB = 30;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+
+  ctx.strokeStyle = "rgba(107,117,145,0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, h-padB); ctx.lineTo(w-padR, h-padB); ctx.stroke();
+
+  if(!series || series.length < 2){
+    ctx.fillStyle = "var(--dim)";
+    ctx.fillStyle = "#6b7591";
+    ctx.font = "12px 'IBM Plex Mono'";
+    ctx.textAlign = "center";
+    ctx.fillText("Advance the simulation to generate data", w/2, h/2);
+    return;
+  }
+
+  const maxVal = Math.max(...series, 1) * 1.15;
+  const minVal = 0;
+
+  // gridlines + y labels
+  ctx.strokeStyle = "rgba(107,117,145,0.12)";
+  ctx.fillStyle = "#6b7591";
+  ctx.font = "10px 'IBM Plex Mono'";
+  ctx.textAlign = "right";
+  for(let i=0;i<=4;i++){
+    const y = padT + plotH - (plotH*(i/4));
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    const val = maxVal*(i/4);
+    ctx.fillText(fmt(val), padL-8, y+3);
+  }
+
+  const stepX = plotW / (series.length-1);
+  ctx.beginPath();
+  series.forEach((v,i)=>{
+    const x = padL + i*stepX;
+    const y = padT + plotH - ((v-minVal)/(maxVal-minVal||1))*plotH;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  const strokeColor = getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim();
+  ctx.strokeStyle = strokeColor || "#4ff0d4";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // fill under curve
+  const lastX = padL + (series.length-1)*stepX;
+  ctx.lineTo(lastX, h-padB); ctx.lineTo(padL, h-padB); ctx.closePath();
+  const grad = ctx.createLinearGradient(0,padT,0,h-padB);
+  grad.addColorStop(0, (strokeColor||"#4ff0d4")+"33");
+  grad.addColorStop(1, (strokeColor||"#4ff0d4")+"00");
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.fillStyle = "#6b7591";
+  ctx.textAlign = "left";
+  ctx.fillText(`T+${labels[0]}`, padL, h-10);
+  ctx.textAlign = "right";
+  ctx.fillText(`T+${labels[labels.length-1]}`, w-padR, h-10);
+}
+
+function drawBarChart(u){
+  const canvas = document.getElementById("resCanvas");
+  const { ctx, w, h } = fitCanvas(canvas);
+  ctx.clearRect(0,0,w,h);
+  const padL = 20, padR = 20, padT = 40, padB = 46;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+
+  const alive = u ? u.civs.filter(c=>c.status!=="extinct") : [];
+  if(alive.length===0){
+    ctx.fillStyle = "#6b7591"; ctx.font = "12px 'IBM Plex Mono'"; ctx.textAlign="center";
+    ctx.fillText("No active civilizations to display", w/2, h/2);
+    return;
+  }
+  const maxR = Math.max(...alive.map(c=>c.resources), 1) * 1.15;
+  const bw = plotW / alive.length;
+  alive.forEach((c,i)=>{
+    const barH = (c.resources/maxR) * plotH;
+    const x = padL + i*bw + bw*0.18;
+    const y = h - padB - barH;
+    const grad = ctx.createLinearGradient(0,y,0,h-padB);
+    grad.addColorStop(0, `hsl(${c.hue},70%,58%)`);
+    grad.addColorStop(1, `hsla(${c.hue},70%,58%,0.25)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, bw*0.64, barH);
+    ctx.fillStyle = "#dce4f5";
+    ctx.font = "10px 'IBM Plex Mono'";
+    ctx.textAlign = "center";
+    ctx.fillText(fmt(c.resources), x+bw*0.32, y-6);
+    ctx.fillStyle = "#6b7591";
+    ctx.save();
+    ctx.translate(x+bw*0.32, h-padB+14);
+    ctx.rotate(alive.length>6 ? -0.5 : 0);
+    ctx.textAlign = alive.length>6 ? "right" : "center";
+    ctx.fillText(c.name.split(" ")[0], 0, 0);
+    ctx.restore();
+  });
+}
+
+function drawActiveView(u){
+  document.querySelectorAll(".view").forEach(v=>v.classList.add("view-hidden"));
+  document.getElementById("view-"+state.activeView).classList.remove("view-hidden");
+  if(state.activeView==="map") drawMap(u);
+  else if(state.activeView==="population") drawLineChart("popCanvas", u?u.history.ticks:[], u?u.history.population:[], "--cyan");
+  else if(state.activeView==="civcount") drawLineChart("civCanvas", u?u.history.ticks:[], u?u.history.civCount:[], "--green");
+  else if(state.activeView==="resources") drawBarChart(u);
+  else if(state.activeView==="tech") drawLineChart("techCanvas", u?u.history.ticks:[], u?u.history.avgTech:[], "--violet");
+}
+
+/* =========================================================================
+   SIMULATION LOOP CONTROL
+   ========================================================================= */
+
+function advanceOneTurn(){
+  const u = currentUniverse();
+  if(!u) return;
+  simulateTick(u);
+  renderAll();
+}
+
+function setSpeed(speed){
+  state.speed = speed;
+  document.querySelectorAll(".speed-btn").forEach((b,i)=> b.classList.toggle("active", i===speed));
+  if(state.intervalHandle){ clearInterval(state.intervalHandle); state.intervalHandle=null; }
+  if(speed===0) return;
+  const intervalMs = speed===1 ? 900 : speed===2 ? 350 : 130;
+  state.intervalHandle = setInterval(()=>{
+    const u = currentUniverse();
+    if(u) { simulateTick(u); renderAll(); }
+  }, intervalMs);
+}
+
+/* =========================================================================
+   GOD MODE
+   ========================================================================= */
+
+function openGodMode(){
+  const u = currentUniverse();
+  document.getElementById("godOverlay").classList.remove("hidden");
+  renderGodPhysics(u);
+  renderGodCivList(u);
+  refreshGodJson(u);
+}
+function closeGodMode(){ document.getElementById("godOverlay").classList.add("hidden"); }
+
+function renderGodPhysics(u){
+  const grid = document.getElementById("godPhysicsGrid");
+  grid.innerHTML = "";
+  if(!u){ grid.innerHTML = `<div class="hint">No universe loaded.</div>`; return; }
+  const fields = [
+    ["gravity","Gravitational Constant"],
+    ["entropy","Entropy Rate"],
+    ["expansion","Expansion Rate"],
+    ["exoticMatter","Exotic Matter Density"],
+    ["uncertainty","Quantum Uncertainty"],
+  ];
+  fields.forEach(([key,label])=>{
+    const div = document.createElement("div");
+    div.className = "god-field";
+    div.innerHTML = `<label>${label}</label><input type="number" step="0.01" value="${u.physics[key]}">`;
+    div.querySelector("input").addEventListener("change", (e)=>{
+      u.physics[key] = parseFloat(e.target.value) || 0;
+      renderAll();
+    });
+    grid.appendChild(div);
+  });
+}
+
+function renderGodCivList(u){
+  const el = document.getElementById("godCivList");
+  el.innerHTML = "";
+  if(!u || u.civs.length===0){ el.innerHTML = `<div class="hint">No civilizations exist.</div>`; return; }
+  u.civs.forEach(c=>{
+    const row = document.createElement("div");
+    row.className = "god-civ-row";
+    row.innerHTML = `<span class="civ-dot" style="background:hsl(${c.hue},70%,55%);color:hsl(${c.hue},70%,55%);"></span>
+      <span class="name">${c.name} ${c.status==='extinct'?'(extinct)':''}</span>
+      <button class="btn small" data-act="max">Max Tech</button>
+      <button class="btn small danger" data-act="del">Delete</button>`;
+    row.querySelector('[data-act="max"]').addEventListener("click", ()=>{
+      c.techLevel = 6.99; c.resources += 1000; renderAll(); renderGodCivList(u); refreshGodJson(u);
+    });
+    row.querySelector('[data-act="del"]').addEventListener("click", ()=>{
+      u.civs = u.civs.filter(x=>x.id!==c.id);
+      if(state.selectedCivId===c.id) state.selectedCivId=null;
+      renderAll(); renderGodCivList(u); refreshGodJson(u);
+    });
+    el.appendChild(row);
+  });
+}
+
+function refreshGodJson(u){
+  document.getElementById("godJson").value = u ? JSON.stringify(u, null, 1) : "{}";
+}
+
+/* =========================================================================
+   EVENT WIRING
+   ========================================================================= */
+
+document.getElementById("newUniverseBtn").addEventListener("click", ()=>{
+  makeNewUniverse(defaultParams());
+});
+
+document.getElementById("universeSelect").addEventListener("change", (e)=>{
+  state.currentId = e.target.value;
+  state.selectedCivId = null;
+  renderAll();
+});
+
+document.getElementById("advanceBtn").addEventListener("click", advanceOneTurn);
+
+document.querySelectorAll(".speed-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=> setSpeed(parseInt(btn.dataset.speed)));
+});
+
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active");
+    state.activeView = tab.dataset.view;
+    drawActiveView(currentUniverse());
+  });
+});
+
+document.querySelectorAll("[data-event]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const u = currentUniverse();
+    if(!u) return;
+    triggerCosmicEvent(u, btn.dataset.event);
+    renderAll();
+  });
+});
+
+document.getElementById("godTrigger").addEventListener("click", openGodMode);
+document.getElementById("godClose").addEventListener("click", closeGodMode);
+document.getElementById("godOverlay").addEventListener("click", (e)=>{ if(e.target.id==="godOverlay") closeGodMode(); });
+
+document.getElementById("godSpawnBtn").addEventListener("click", ()=>{
+  const u = currentUniverse();
+  if(!u) return;
+  const nameInput = document.getElementById("godSpawnName");
+  const overrides = {};
+  if(nameInput.value.trim()) overrides.name = nameInput.value.trim();
+  const nc = createCivilization(u.tick, overrides);
+  u.civs.push(nc);
+  pushLog(u, `[Developer] ${nc.name} was manually instantiated.`, "cosmic");
+  nameInput.value = "";
+  renderAll();
+  renderGodCivList(u);
+  refreshGodJson(u);
+});
+
+document.getElementById("godApplyJson").addEventListener("click", ()=>{
+  try{
+    const parsed = JSON.parse(document.getElementById("godJson").value);
+    state.universes[parsed.id] = parsed;
+    state.currentId = parsed.id;
+    renderAll();
+    renderGodPhysics(parsed);
+    renderGodCivList(parsed);
+  }catch(err){
+    alert("Invalid JSON: " + err.message);
+  }
+});
+document.getElementById("godRefreshJson").addEventListener("click", ()=> refreshGodJson(currentUniverse()));
+
+window.addEventListener("resize", ()=> drawActiveView(currentUniverse()));
+
+// ambient re-render for map animation even while paused
+setInterval(()=>{ if(state.activeView==="map") drawMap(currentUniverse()); }, 60);
+
+/* =========================================================================
+   BOOTSTRAP
+   ========================================================================= */
+setSpeed(0);
+makeNewUniverse(defaultParams());
+</script>
+</body>
+</html>
